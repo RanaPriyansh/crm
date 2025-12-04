@@ -2,20 +2,56 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { businessInputSchema, businessQuerySchema } from '@/lib/validations'
 import { normalizePhone } from '@/lib/utils/phone'
+import * as devStore from '@/lib/dev-store'
+import { isDevMode } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/businesses - List businesses with pagination and filters
 export async function GET(request: Request) {
+    // Dev mode: use local store
+    if (isDevMode) {
+        const { searchParams } = new URL(request.url)
+        const page = parseInt(searchParams.get('page') || '1')
+        const pageSize = parseInt(searchParams.get('pageSize') || '20')
+        const search = searchParams.get('search')
+        const province = searchParams.get('province')
+        const status = searchParams.get('status')
+
+        let businesses = devStore.getBusinesses()
+
+        // Apply filters
+        if (province) businesses = businesses.filter(b => b.province === province)
+        if (status) businesses = businesses.filter(b => b.status === status)
+        if (search) {
+            const q = search.toLowerCase()
+            businesses = businesses.filter(b =>
+                b.name.toLowerCase().includes(q) ||
+                b.city?.toLowerCase().includes(q)
+            )
+        }
+
+        const total = businesses.length
+        const offset = (page - 1) * pageSize
+        const data = businesses.slice(offset, offset + pageSize)
+
+        return NextResponse.json({
+            data,
+            count: total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+        })
+    }
+
+    // Production mode: use Supabase
     const supabase = await createClient()
 
-    // Check auth
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse query params
     const { searchParams } = new URL(request.url)
     const queryResult = businessQuerySchema.safeParse({
         page: searchParams.get('page'),
@@ -35,24 +71,15 @@ export async function GET(request: Request) {
     const { page, pageSize, search, province, status, source, sortBy, sortOrder } = queryResult.data
     const offset = (page - 1) * pageSize
 
-    // Build query
     let query = supabase
         .from('businesses')
         .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
-    // Apply filters
-    if (province) {
-        query = query.eq('province', province)
-    }
-    if (status) {
-        query = query.eq('status', status)
-    }
-    if (source) {
-        query = query.eq('source', source)
-    }
+    if (province) query = query.eq('province', province)
+    if (status) query = query.eq('status', status)
+    if (source) query = query.eq('source', source)
 
-    // Full-text search
     if (search) {
         query = query.textSearch('search_vector', search, {
             type: 'websearch',
@@ -60,7 +87,6 @@ export async function GET(request: Request) {
         })
     }
 
-    // Apply sorting and pagination
     query = query
         .order(sortBy, { ascending: sortOrder === 'asc' })
         .range(offset, offset + pageSize - 1)
@@ -83,15 +109,6 @@ export async function GET(request: Request) {
 
 // POST /api/businesses - Create a new business
 export async function POST(request: Request) {
-    const supabase = await createClient()
-
-    // Check auth
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Parse and validate body
     const body = await request.json()
     const result = businessInputSchema.safeParse(body)
 
@@ -102,10 +119,25 @@ export async function POST(request: Request) {
         }, { status: 400 })
     }
 
-    // Normalize phone number
     const phone_e164 = normalizePhone(result.data.phone_raw)
 
-    // Insert business
+    // Dev mode: use local store
+    if (isDevMode) {
+        const business = devStore.createBusiness({
+            ...result.data,
+            phone_e164,
+        })
+        return NextResponse.json(business, { status: 201 })
+    }
+
+    // Production mode: use Supabase
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { data, error } = await supabase
         .from('businesses')
         .insert({

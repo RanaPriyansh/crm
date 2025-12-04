@@ -14,6 +14,8 @@ interface PreviewRow {
     phone?: string
     email?: string
     website?: string
+    latitude?: string
+    longitude?: string
 }
 
 interface ImportResult {
@@ -67,7 +69,9 @@ export default function ImportPage() {
                 postal_code: row.postal_code || row.postal || row.zip || '',
                 phone: row.phone || row.telephone || row.phone_number || '',
                 email: row.email || row.email_address || '',
-                website: row.website || row.url || row.web || ''
+                website: row.website || row.url || row.web || '',
+                latitude: row.latitude || row.lat || '',
+                longitude: row.longitude || row.lng || row.lon || ''
             })
         }
 
@@ -137,6 +141,9 @@ export default function ImportPage() {
                     continue
                 }
 
+                const lat = parseFloat(row.latitude || row.lat || '')
+                const lng = parseFloat(row.longitude || row.lng || row.lon || '')
+
                 const business = {
                     name,
                     category: row.category || row.industry || row.type || null,
@@ -147,6 +154,8 @@ export default function ImportPage() {
                     phone_raw: row.phone || row.telephone || row.phone_number || null,
                     email: row.email || row.email_address || null,
                     website: row.website || row.url || row.web || null,
+                    latitude: !isNaN(lat) ? lat : null,
+                    longitude: !isNaN(lng) ? lng : null,
                     source: 'csv_import'
                 }
 
@@ -374,6 +383,13 @@ export default function ImportPage() {
                             <li>• phone / telephone</li>
                             <li>• email</li>
                             <li>• website / url</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p className="font-medium mb-1">Location (for Map)</p>
+                        <ul className="text-[hsl(var(--muted))] space-y-1">
+                            <li>• latitude / lat</li>
+                            <li>• longitude / lng</li>
                         </ul>
                     </div>
                     <div>

@@ -7,47 +7,54 @@ import {
   MessageSquare,
   TrendingUp,
   ArrowRight,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react'
 import { PROVINCE_NAMES } from '@/lib/utils/phone'
+import * as devStore from '@/lib/dev-store'
+
+// Check dev mode inline - imported config may not work in server components
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const isDevMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseUrl.startsWith('https://')
 
 async function getDashboardStats() {
+  // Dev mode: use local store
+  if (isDevMode) {
+    return devStore.getStats()
+  }
+
+  // Production mode: use Supabase
   const supabase = await createClient()
 
-  // Get total businesses
   const { count: totalBusinesses } = await supabase
     .from('businesses')
     .select('*', { count: 'exact', head: true })
     .is('deleted_at', null)
 
-  // Get total contacts
   const { count: totalContacts } = await supabase
     .from('contacts')
     .select('*', { count: 'exact', head: true })
 
-  // Get interactions this month
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
 
-  const { count: recentInteractions } = await supabase
+  const { count: totalInteractions } = await supabase
     .from('interactions')
     .select('*', { count: 'exact', head: true })
     .gte('occurred_at', startOfMonth.toISOString())
 
-  // Get count by province
-  const { data: byProvince } = await supabase
+  const { data: byProvinceData } = await supabase
     .from('businesses')
     .select('province')
     .is('deleted_at', null)
 
-  const provinceCounts = (byProvince || []).reduce((acc, { province }) => {
+  const byProvince = (byProvinceData || []).reduce((acc, { province }) => {
     acc[province] = (acc[province] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 
-  // Get recently added
-  const { data: recentlyAdded } = await supabase
+  const { data: recentBusinesses } = await supabase
     .from('businesses')
     .select('id, name, city, province, created_at')
     .is('deleted_at', null)
@@ -57,29 +64,48 @@ async function getDashboardStats() {
   return {
     totalBusinesses: totalBusinesses || 0,
     totalContacts: totalContacts || 0,
-    recentInteractions: recentInteractions || 0,
-    byProvince: ['NS', 'NB', 'PE', 'NL'].map(p => ({
-      province: p,
-      name: PROVINCE_NAMES[p],
-      count: provinceCounts[p] || 0
-    })),
-    recentlyAdded: recentlyAdded || []
+    totalInteractions: totalInteractions || 0,
+    byProvince,
+    recentBusinesses: recentBusinesses || []
   }
 }
 
 export default async function Dashboard() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // In dev mode, skip auth check
+  if (!isDevMode) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/login')
+    if (!user) {
+      redirect('/login')
+    }
   }
 
   const stats = await getDashboardStats()
-  const totalByProvince = stats.byProvince.reduce((a, b) => a + b.count, 0)
+
+  // Format province data for display
+  const provinceData = ['NS', 'NB', 'PE', 'NL'].map(p => ({
+    province: p,
+    name: PROVINCE_NAMES[p],
+    count: stats.byProvince[p] || 0
+  }))
+  const totalByProvince = provinceData.reduce((a, b) => a + b.count, 0)
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Dev Mode Banner */}
+      {isDevMode && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-yellow-500">Development Mode</p>
+            <p className="text-sm text-[hsl(var(--muted))]">
+              Supabase is not configured. Using local JSON storage. Data is saved to <code>.dev-data/</code>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -124,7 +150,7 @@ export default async function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[hsl(var(--muted))] text-sm">Interactions (This Month)</p>
-              <p className="text-3xl font-bold mt-1">{stats.recentInteractions.toLocaleString()}</p>
+              <p className="text-3xl font-bold mt-1">{stats.totalInteractions.toLocaleString()}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-[hsl(var(--color-accent))]/10 flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-[hsl(var(--color-accent))]" />
@@ -151,7 +177,7 @@ export default async function Dashboard() {
         <div className="glass-card p-6">
           <h2 className="text-lg font-semibold mb-4">Businesses by Province</h2>
           <div className="space-y-4">
-            {stats.byProvince.map(({ province, name, count }) => {
+            {provinceData.map(({ province, name, count }) => {
               const percentage = totalByProvince > 0 ? (count / totalByProvince) * 100 : 0
               const colors: Record<string, string> = {
                 NS: 'bg-blue-500',
@@ -189,7 +215,7 @@ export default async function Dashboard() {
             </Link>
           </div>
 
-          {stats.recentlyAdded.length === 0 ? (
+          {stats.recentBusinesses.length === 0 ? (
             <div className="text-center py-8 text-[hsl(var(--muted))]">
               <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No businesses added yet</p>
@@ -199,7 +225,7 @@ export default async function Dashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {stats.recentlyAdded.map((business) => (
+              {stats.recentBusinesses.map((business) => (
                 <Link
                   key={business.id}
                   href={`/businesses/${business.id}`}

@@ -2,6 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+    // Check if Supabase is configured - must check here, not in imported module
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const isDevMode = !supabaseUrl ||
+        supabaseUrl === '' ||
+        supabaseUrl.includes('your-project') ||
+        !supabaseUrl.startsWith('https://')
+
+    // Dev mode: skip all auth checks
+    if (isDevMode) {
+        console.log('[DEV MODE] Auth bypassed - no Supabase configured')
+        return NextResponse.next({ request })
+    }
+
     let supabaseResponse = NextResponse.next({
         request,
     })

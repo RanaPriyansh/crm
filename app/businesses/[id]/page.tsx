@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -16,10 +16,12 @@ import {
     Trash2,
     Plus,
     MessageSquare,
-    User
+    User,
+    MoreVertical
 } from 'lucide-react'
 import { Business, Contact, Interaction } from '@/lib/types'
 import { PROVINCE_NAMES, STATUS_CONFIG, SOURCE_CONFIG, formatPhone } from '@/lib/utils/phone'
+import { ContactModal } from '@/components/ContactModal'
 
 // Dynamic import Leaflet to avoid SSR issues
 const BusinessMap = dynamic(() => import('@/components/BusinessMap'), {
@@ -42,30 +44,47 @@ export default function BusinessDetailPage() {
     const [business, setBusiness] = useState<BusinessWithRelations | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [showContactModal, setShowContactModal] = useState(false)
+    const [editingContact, setEditingContact] = useState<Contact | null>(null)
+    const [contactMenuOpen, setContactMenuOpen] = useState<string | null>(null)
+
+    const fetchBusiness = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/businesses/${params.id}`)
+            if (!res.ok) {
+                if (res.status === 404) {
+                    setError('Business not found')
+                } else {
+                    setError('Failed to load business')
+                }
+                return
+            }
+            const data = await res.json()
+            setBusiness(data)
+        } catch {
+            setError('Failed to load business')
+        } finally {
+            setLoading(false)
+        }
+    }, [params.id])
 
     useEffect(() => {
-        async function fetchBusiness() {
-            try {
-                const res = await fetch(`/api/businesses/${params.id}`)
-                if (!res.ok) {
-                    if (res.status === 404) {
-                        setError('Business not found')
-                    } else {
-                        setError('Failed to load business')
-                    }
-                    return
-                }
-                const data = await res.json()
-                setBusiness(data)
-            } catch {
-                setError('Failed to load business')
-            } finally {
-                setLoading(false)
-            }
-        }
-
         fetchBusiness()
-    }, [params.id])
+    }, [fetchBusiness])
+
+    const handleDeleteContact = async (contactId: string) => {
+        if (!confirm('Delete this contact?')) return
+        try {
+            const res = await fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+            if (res.ok) {
+                fetchBusiness()
+            }
+        } catch {
+            alert('Failed to delete contact')
+        }
+        setContactMenuOpen(null)
+    }
+
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this business?')) return
@@ -286,7 +305,10 @@ export default function BusinessDetailPage() {
                     <div className="glass-card p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Contacts</h2>
-                            <button className="btn btn-ghost text-sm p-2">
+                            <button
+                                onClick={() => { setEditingContact(null); setShowContactModal(true); }}
+                                className="btn btn-ghost text-sm p-2"
+                            >
                                 <Plus className="w-4 h-4" />
                             </button>
                         </div>
@@ -295,20 +317,55 @@ export default function BusinessDetailPage() {
                             <div className="text-center py-6 text-[hsl(var(--muted))]">
                                 <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
                                 <p className="text-sm">No contacts yet</p>
+                                <button
+                                    onClick={() => { setEditingContact(null); setShowContactModal(true); }}
+                                    className="text-[hsl(var(--color-primary))] hover:underline text-sm mt-2"
+                                >
+                                    Add first contact
+                                </button>
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 {business.contacts.map((contact) => (
-                                    <div key={contact.id} className="p-3 rounded-lg bg-[hsl(var(--background-tertiary))]">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-medium">
-                                                {[contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Unnamed'}
-                                            </p>
-                                            {contact.is_primary && (
-                                                <span className="badge bg-[hsl(var(--color-primary))]/20 text-[hsl(var(--color-primary))]">
-                                                    Primary
-                                                </span>
-                                            )}
+                                    <div key={contact.id} className="p-3 rounded-lg bg-[hsl(var(--background-tertiary))] relative group">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-medium">
+                                                    {[contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Unnamed'}
+                                                </p>
+                                                {contact.is_primary && (
+                                                    <span className="badge bg-[hsl(var(--color-primary))]/20 text-[hsl(var(--color-primary))]">
+                                                        Primary
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setContactMenuOpen(contactMenuOpen === contact.id ? null : contact.id)}
+                                                    className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--border))] transition-opacity"
+                                                >
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </button>
+                                                {contactMenuOpen === contact.id && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-10" onClick={() => setContactMenuOpen(null)} />
+                                                        <div className="absolute right-0 top-full mt-1 z-20 bg-[hsl(var(--background-secondary))] border border-[hsl(var(--border))] rounded-lg shadow-lg py-1 min-w-24">
+                                                            <button
+                                                                onClick={() => { setEditingContact(contact); setShowContactModal(true); setContactMenuOpen(null); }}
+                                                                className="block w-full text-left px-3 py-1.5 hover:bg-[hsl(var(--background-tertiary))] text-sm"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteContact(contact.id)}
+                                                                className="block w-full text-left px-3 py-1.5 hover:bg-[hsl(var(--background-tertiary))] text-sm text-red-400"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                         {contact.position && (
                                             <p className="text-sm text-[hsl(var(--muted))]">{contact.position}</p>
@@ -363,6 +420,16 @@ export default function BusinessDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Contact Modal */}
+            {showContactModal && (
+                <ContactModal
+                    businessId={business.id}
+                    contact={editingContact || undefined}
+                    onClose={() => { setShowContactModal(false); setEditingContact(null); }}
+                    onSaved={() => fetchBusiness()}
+                />
+            )}
         </div>
     )
 }

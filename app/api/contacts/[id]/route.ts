@@ -1,29 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { businessInputSchema } from '@/lib/validations'
+import { contactInputSchema } from '@/lib/validations'
 import { normalizePhone } from '@/lib/utils/phone'
 import * as devStore from '@/lib/dev-store'
 import { isDevMode } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/businesses/[id]
+// GET /api/contacts/[id]
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params
 
-    // Dev mode
+    // Dev mode - not implemented for single contact
     if (isDevMode) {
-        const business = devStore.getBusinessById(id)
-        if (!business) {
-            return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-        }
-        return NextResponse.json(business)
+        return NextResponse.json({ error: 'Not implemented in dev mode' }, { status: 501 })
     }
 
-    // Production mode
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -31,48 +26,30 @@ export async function GET(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: business, error } = await supabase
-        .from('businesses')
-        .select('*')
+    const { data, error } = await supabase
+        .from('contacts')
+        .select('*, businesses(name)')
         .eq('id', id)
-        .is('deleted_at', null)
         .single()
 
     if (error) {
         if (error.code === 'PGRST116') {
-            return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+            return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
         }
-        return NextResponse.json({ error: 'Failed to fetch business' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to fetch contact' }, { status: 500 })
     }
 
-    const { data: contacts } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('business_id', id)
-        .order('is_primary', { ascending: false })
-
-    const { data: interactions } = await supabase
-        .from('interactions')
-        .select('*')
-        .eq('business_id', id)
-        .order('occurred_at', { ascending: false })
-        .limit(10)
-
-    return NextResponse.json({
-        ...business,
-        contacts: contacts || [],
-        interactions: interactions || []
-    })
+    return NextResponse.json(data)
 }
 
-// PUT /api/businesses/[id]
+// PUT /api/contacts/[id]
 export async function PUT(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params
     const body = await request.json()
-    const result = businessInputSchema.partial().safeParse(body)
+    const result = contactInputSchema.partial().safeParse(body)
 
     if (!result.success) {
         return NextResponse.json({
@@ -88,11 +65,11 @@ export async function PUT(
 
     // Dev mode
     if (isDevMode) {
-        const business = devStore.updateBusiness(id, updateData)
-        if (!business) {
-            return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+        const contact = devStore.updateContact(id, updateData)
+        if (!contact) {
+            return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
         }
-        return NextResponse.json(business)
+        return NextResponse.json(contact)
     }
 
     // Production mode
@@ -103,28 +80,32 @@ export async function PUT(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (result.data.is_primary && result.data.business_id) {
+        await supabase
+            .from('contacts')
+            .update({ is_primary: false })
+            .eq('business_id', result.data.business_id)
+            .neq('id', id)
+    }
+
     const { data, error } = await supabase
-        .from('businesses')
-        .update({
-            ...updateData,
-            updated_by: user.id,
-        })
+        .from('contacts')
+        .update(updateData)
         .eq('id', id)
-        .is('deleted_at', null)
         .select()
         .single()
 
     if (error) {
         if (error.code === 'PGRST116') {
-            return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+            return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
         }
-        return NextResponse.json({ error: 'Failed to update business' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 })
     }
 
     return NextResponse.json(data)
 }
 
-// DELETE /api/businesses/[id]
+// DELETE /api/contacts/[id]
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -133,9 +114,9 @@ export async function DELETE(
 
     // Dev mode
     if (isDevMode) {
-        const success = devStore.deleteBusiness(id)
+        const success = devStore.deleteContact(id)
         if (!success) {
-            return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+            return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
         }
         return NextResponse.json({ success: true })
     }
@@ -149,16 +130,13 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-        .from('businesses')
-        .update({
-            deleted_at: new Date().toISOString(),
-            updated_by: user.id,
-        })
+        .from('contacts')
+        .delete()
         .eq('id', id)
 
     if (error) {
-        console.error('Error deleting business:', error)
-        return NextResponse.json({ error: 'Failed to delete business' }, { status: 500 })
+        console.error('Error deleting contact:', error)
+        return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

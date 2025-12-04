@@ -26,6 +26,8 @@ export const businessInputSchema = z.object({
     phone_raw: z.string().max(50).optional().nullable(),
     email: z.string().email('Invalid email').max(255).optional().nullable().or(z.literal('')),
     website: z.string().url('Invalid URL').max(255).optional().nullable().or(z.literal('')),
+    latitude: z.number().min(-90).max(90).optional().nullable(),
+    longitude: z.number().min(-180).max(180).optional().nullable(),
     naics_code: z.string().max(10).optional().nullable(),
     size_band: sizeBandSchema.optional().nullable(),
     status: businessStatusSchema.default('active'),
