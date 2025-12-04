@@ -1,26 +1,240 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand colors - Deep ocean theme for Atlantic Canada */
+  --color-primary: 221 83% 53%; /* Electric blue */
+  --color-primary-dark: 224 76% 48%;
+  --color-secondary: 199 89% 48%; /* Cyan accent */
+  --color-accent: 271 91% 65%; /* Purple */
+  
+  /* Neutrals */
+  --background: 222 47% 11%;
+  --background-secondary: 222 41% 15%;
+  --background-tertiary: 223 37% 20%;
+  --foreground: 210 40% 98%;
+  --muted: 215 20% 65%;
+  --border: 217 33% 25%;
+  
+  /* Status colors */
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --error: 0 84% 60%;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background-secondary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted));
+}
+
+/* Glass morphism card */
+.glass-card {
+  background: linear-gradient(
+    135deg,
+    hsla(var(--background-secondary), 0.8),
+    hsla(var(--background-tertiary), 0.6)
+  );
+  backdrop-filter: blur(12px);
+  border: 1px solid hsla(var(--border), 0.5);
+  border-radius: 12px;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--color-primary)), hsl(var(--color-secondary)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, hsl(var(--color-primary)), hsl(var(--color-primary-dark)));
+  color: white;
+  box-shadow: 0 4px 14px hsla(var(--color-primary), 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px hsla(var(--color-primary), 0.5);
+}
+
+.btn-secondary {
+  background: hsl(var(--background-tertiary));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.btn-secondary:hover {
+  background: hsl(var(--border));
+}
+
+.btn-ghost {
+  background: transparent;
+  color: hsl(var(--muted));
+}
+
+.btn-ghost:hover {
+  background: hsla(var(--border), 0.3);
+  color: hsl(var(--foreground));
+}
+
+/* Input styles */
+.input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: hsl(var(--background-secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: hsl(var(--color-primary));
+  box-shadow: 0 0 0 3px hsla(var(--color-primary), 0.2);
+}
+
+.input::placeholder {
+  color: hsl(var(--muted));
+}
+
+/* Badge styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+/* Table styles */
+.table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  padding: 0.875rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted));
+  background: hsl(var(--background-secondary));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: hsla(var(--background-tertiary), 0.5);
+}
+
+/* Sidebar link active state */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: hsl(var(--muted));
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: hsla(var(--border), 0.3);
+  color: hsl(var(--foreground));
+}
+
+.sidebar-link.active {
+  background: linear-gradient(135deg, hsla(var(--color-primary), 0.15), hsla(var(--color-secondary), 0.1));
+  color: hsl(var(--foreground));
+  border: 1px solid hsla(var(--color-primary), 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsla(var(--color-primary), 0.2); }
+  50% { box-shadow: 0 0 30px hsla(var(--color-primary), 0.4); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Leaflet map container */
+.leaflet-container {
+  background: hsl(var(--background-secondary)) !important;
+  border-radius: 8px;
 }

@@ -1,65 +1,266 @@
-import Image from "next/image";
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import {
+  Building2,
+  Users,
+  MessageSquare,
+  TrendingUp,
+  ArrowRight,
+  Plus
+} from 'lucide-react'
+import { PROVINCE_NAMES } from '@/lib/utils/phone'
 
-export default function Home() {
+async function getDashboardStats() {
+  const supabase = await createClient()
+
+  // Get total businesses
+  const { count: totalBusinesses } = await supabase
+    .from('businesses')
+    .select('*', { count: 'exact', head: true })
+    .is('deleted_at', null)
+
+  // Get total contacts
+  const { count: totalContacts } = await supabase
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+
+  // Get interactions this month
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
+
+  const { count: recentInteractions } = await supabase
+    .from('interactions')
+    .select('*', { count: 'exact', head: true })
+    .gte('occurred_at', startOfMonth.toISOString())
+
+  // Get count by province
+  const { data: byProvince } = await supabase
+    .from('businesses')
+    .select('province')
+    .is('deleted_at', null)
+
+  const provinceCounts = (byProvince || []).reduce((acc, { province }) => {
+    acc[province] = (acc[province] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  // Get recently added
+  const { data: recentlyAdded } = await supabase
+    .from('businesses')
+    .select('id, name, city, province, created_at')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  return {
+    totalBusinesses: totalBusinesses || 0,
+    totalContacts: totalContacts || 0,
+    recentInteractions: recentInteractions || 0,
+    byProvince: ['NS', 'NB', 'PE', 'NL'].map(p => ({
+      province: p,
+      name: PROVINCE_NAMES[p],
+      count: provinceCounts[p] || 0
+    })),
+    recentlyAdded: recentlyAdded || []
+  }
+}
+
+export default async function Dashboard() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const stats = await getDashboardStats()
+  const totalByProvince = stats.byProvince.reduce((a, b) => a + b.count, 0)
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-[hsl(var(--muted))] mt-1">
+            Atlantic Canada Business Directory Overview
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <Link href="/businesses/new" className="btn btn-primary">
+          <Plus className="w-4 h-4" />
+          Add Business
+        </Link>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[hsl(var(--muted))] text-sm">Total Businesses</p>
+              <p className="text-3xl font-bold mt-1">{stats.totalBusinesses.toLocaleString()}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-[hsl(var(--color-primary))]/10 flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-[hsl(var(--color-primary))]" />
+            </div>
+          </div>
         </div>
-      </main>
+
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[hsl(var(--muted))] text-sm">Total Contacts</p>
+              <p className="text-3xl font-bold mt-1">{stats.totalContacts.toLocaleString()}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-[hsl(var(--color-secondary))]/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-[hsl(var(--color-secondary))]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[hsl(var(--muted))] text-sm">Interactions (This Month)</p>
+              <p className="text-3xl font-bold mt-1">{stats.recentInteractions.toLocaleString()}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-[hsl(var(--color-accent))]/10 flex items-center justify-center">
+              <MessageSquare className="w-6 h-6 text-[hsl(var(--color-accent))]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[hsl(var(--muted))] text-sm">Growth Rate</p>
+              <p className="text-3xl font-bold mt-1">+12%</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-green-500" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Province breakdown and Recent */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* By Province */}
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold mb-4">Businesses by Province</h2>
+          <div className="space-y-4">
+            {stats.byProvince.map(({ province, name, count }) => {
+              const percentage = totalByProvince > 0 ? (count / totalByProvince) * 100 : 0
+              const colors: Record<string, string> = {
+                NS: 'bg-blue-500',
+                NB: 'bg-green-500',
+                PE: 'bg-yellow-500',
+                NL: 'bg-purple-500'
+              }
+              return (
+                <div key={province}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span>{name}</span>
+                    <span className="text-[hsl(var(--muted))]">{count}</span>
+                  </div>
+                  <div className="h-2 bg-[hsl(var(--background-tertiary))] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${colors[province]} transition-all duration-500`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Recently Added */}
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recently Added</h2>
+            <Link
+              href="/businesses"
+              className="text-sm text-[hsl(var(--color-primary))] hover:underline flex items-center gap-1"
+            >
+              View all <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {stats.recentlyAdded.length === 0 ? (
+            <div className="text-center py-8 text-[hsl(var(--muted))]">
+              <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No businesses added yet</p>
+              <Link href="/businesses/new" className="text-[hsl(var(--color-primary))] hover:underline">
+                Add your first business
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {stats.recentlyAdded.map((business) => (
+                <Link
+                  key={business.id}
+                  href={`/businesses/${business.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-[hsl(var(--background-tertiary))] transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">{business.name}</p>
+                    <p className="text-sm text-[hsl(var(--muted))]">
+                      {business.city && `${business.city}, `}{business.province}
+                    </p>
+                  </div>
+                  <span className="text-xs text-[hsl(var(--muted))]">
+                    {new Date(business.created_at).toLocaleDateString()}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="glass-card p-6">
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Link
+            href="/businesses/new"
+            className="p-4 rounded-lg border border-[hsl(var(--border))] hover:border-[hsl(var(--color-primary))] hover:bg-[hsl(var(--background-tertiary))] transition-all text-center"
+          >
+            <Plus className="w-8 h-8 mx-auto mb-2 text-[hsl(var(--color-primary))]" />
+            <p className="font-medium">Add Business</p>
+          </Link>
+          <Link
+            href="/import"
+            className="p-4 rounded-lg border border-[hsl(var(--border))] hover:border-[hsl(var(--color-secondary))] hover:bg-[hsl(var(--background-tertiary))] transition-all text-center"
+          >
+            <svg className="w-8 h-8 mx-auto mb-2 text-[hsl(var(--color-secondary))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p className="font-medium">Import CSV</p>
+          </Link>
+          <Link
+            href="/businesses"
+            className="p-4 rounded-lg border border-[hsl(var(--border))] hover:border-[hsl(var(--color-accent))] hover:bg-[hsl(var(--background-tertiary))] transition-all text-center"
+          >
+            <svg className="w-8 h-8 mx-auto mb-2 text-[hsl(var(--color-accent))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <p className="font-medium">Search</p>
+          </Link>
+          <Link
+            href="/businesses?export=true"
+            className="p-4 rounded-lg border border-[hsl(var(--border))] hover:border-green-500 hover:bg-[hsl(var(--background-tertiary))] transition-all text-center"
+          >
+            <svg className="w-8 h-8 mx-auto mb-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <p className="font-medium">Export Data</p>
+          </Link>
+        </div>
+      </div>
     </div>
-  );
+  )
 }

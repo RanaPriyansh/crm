@@ -1,0 +1,6 @@
+name,category,address,city,province,postal_code,phone,email,website
+"Atlantic Fisheries Ltd","Fishing & Marine","123 Harbour Drive","Halifax","NS","B3J 2T5","(902) 555-0101","info@atlanticfisheries.ca","https://atlanticfisheries.ca"
+"Maritime Tech Solutions","Technology","456 Innovation Way","Moncton","NB","E1C 4Z5","(506) 555-0202","contact@maritimetech.ca",
+"Island Farms PEI","Agriculture","789 Rural Route 1","Charlottetown","PE","C1A 7N8","(902) 555-0303","hello@islandfarms.pe.ca","https://islandfarms.pe.ca"
+"Newfoundland Energy Corp","Energy & Utilities","321 Signal Hill Road","St. John's","NL","A1A 1A1","(709) 555-0404","energy@nflenergy.ca","https://nflenergy.ca"
+"Acadian Crafts","Retail","654 Main Street","Fredericton","NB","E3B 1C6","(506) 555-0505","shop@acadiancrafts.ca",
