@@ -8,24 +8,41 @@ import {
     Upload,
     Settings,
     LogOut,
-    MapPin
+    MapPin,
+    Users,
+    Map,
+    Download,
+    MessageSquare
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Businesses', href: '/businesses', icon: Building2 },
-    { name: 'Import Data', href: '/import', icon: Upload },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Contacts', href: '/contacts', icon: Users },
+    { name: 'Map View', href: '/map', icon: Map },
+    { name: 'Import', href: '/import', icon: Upload },
+    { name: 'Export', href: '/export', icon: Download },
 ]
+
+// Check dev mode
+const supabaseUrl = typeof window !== 'undefined'
+    ? process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    : ''
+const isDevMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseUrl.startsWith('https://')
 
 export function Sidebar() {
     const pathname = usePathname()
     const router = useRouter()
-    const supabase = createClient()
 
     const handleSignOut = async () => {
+        if (isDevMode) {
+            router.push('/login')
+            return
+        }
+
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
         await supabase.auth.signOut()
         router.push('/login')
     }

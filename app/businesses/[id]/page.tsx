@@ -22,6 +22,7 @@ import {
 import { Business, Contact, Interaction } from '@/lib/types'
 import { PROVINCE_NAMES, STATUS_CONFIG, SOURCE_CONFIG, formatPhone } from '@/lib/utils/phone'
 import { ContactModal } from '@/components/ContactModal'
+import { InteractionModal } from '@/components/InteractionModal'
 
 // Dynamic import Leaflet to avoid SSR issues
 const BusinessMap = dynamic(() => import('@/components/BusinessMap'), {
@@ -47,6 +48,7 @@ export default function BusinessDetailPage() {
     const [showContactModal, setShowContactModal] = useState(false)
     const [editingContact, setEditingContact] = useState<Contact | null>(null)
     const [contactMenuOpen, setContactMenuOpen] = useState<string | null>(null)
+    const [showInteractionModal, setShowInteractionModal] = useState(false)
 
     const fetchBusiness = useCallback(async () => {
         try {
@@ -263,7 +265,10 @@ export default function BusinessDetailPage() {
                     <div className="glass-card p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Recent Interactions</h2>
-                            <button className="btn btn-secondary text-sm">
+                            <button
+                                onClick={() => setShowInteractionModal(true)}
+                                className="btn btn-secondary text-sm"
+                            >
                                 <Plus className="w-4 h-4" />
                                 Log Interaction
                             </button>
@@ -430,6 +435,17 @@ export default function BusinessDetailPage() {
                     onSaved={() => fetchBusiness()}
                 />
             )}
+
+            {/* Interaction Modal */}
+            {showInteractionModal && (
+                <InteractionModal
+                    businessId={business.id}
+                    businessName={business.name}
+                    onClose={() => setShowInteractionModal(false)}
+                    onSaved={() => { setShowInteractionModal(false); fetchBusiness(); }}
+                />
+            )}
         </div>
     )
 }
+

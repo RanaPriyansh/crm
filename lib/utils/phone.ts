@@ -100,3 +100,36 @@ export const SOURCE_CONFIG: Record<string, { label: string; icon: string }> = {
     scraper: { label: 'Web Scraper', icon: '🤖' },
     other: { label: 'Other', icon: '📌' },
 }
+
+/**
+ * Status options for select dropdowns
+ */
+export const STATUS_OPTIONS = [
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'do_not_contact', label: 'Do Not Contact' },
+    { value: 'bad_data', label: 'Bad Data' },
+    { value: 'duplicate', label: 'Duplicate' },
+]
+
+/**
+ * Source options for select dropdowns
+ */
+export const SOURCE_OPTIONS = [
+    { value: 'manual', label: 'Manual Entry' },
+    { value: 'csv_import', label: 'CSV Import' },
+    { value: 'api_import', label: 'API Import' },
+    { value: 'scraper', label: 'Web Scraper' },
+    { value: 'other', label: 'Other' },
+]
+
+/**
+ * Size band options for select dropdowns
+ */
+export const SIZE_BAND_OPTIONS = [
+    { value: 'micro', label: 'Micro (1-4 employees)' },
+    { value: 'small', label: 'Small (5-19 employees)' },
+    { value: 'medium', label: 'Medium (20-99 employees)' },
+    { value: 'large', label: 'Large (100+ employees)' },
+]
+

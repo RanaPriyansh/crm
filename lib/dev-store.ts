@@ -219,3 +219,59 @@ export function getStats() {
         recentBusinesses: businesses.slice(-5).reverse(),
     }
 }
+
+// Interactions
+export function getInteractions(businessId?: string): Interaction[] {
+    const interactions = readStore<Interaction>('interactions')
+    if (businessId) {
+        return interactions.filter(i => i.business_id === businessId).sort((a, b) =>
+            new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+        )
+    }
+    return interactions.sort((a, b) =>
+        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+    )
+}
+
+export function createInteraction(data: Partial<Interaction>): Interaction {
+    const interactions = readStore<Interaction>('interactions')
+    const now = new Date().toISOString()
+
+    const interaction: Interaction = {
+        id: crypto.randomUUID(),
+        business_id: data.business_id || '',
+        contact_id: data.contact_id || null,
+        type: data.type || 'note',
+        direction: data.direction || 'internal',
+        subject: data.subject || null,
+        notes: data.notes || null,
+        external_ref: data.external_ref || null,
+        occurred_at: data.occurred_at || now,
+        user_id: 'dev-user',
+        created_at: now,
+    }
+
+    interactions.push(interaction)
+    writeStore('interactions', interactions)
+
+    // Update business last_interaction_at
+    const businesses = readStore<Business>('businesses')
+    const bizIndex = businesses.findIndex(b => b.id === data.business_id)
+    if (bizIndex !== -1) {
+        businesses[bizIndex].last_interaction_at = interaction.occurred_at
+        writeStore('businesses', businesses)
+    }
+
+    return interaction
+}
+
+export function deleteInteraction(id: string): boolean {
+    const interactions = readStore<Interaction>('interactions')
+    const index = interactions.findIndex(i => i.id === id)
+    if (index === -1) return false
+
+    interactions.splice(index, 1)
+    writeStore('interactions', interactions)
+    return true
+}
+
