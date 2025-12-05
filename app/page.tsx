@@ -186,10 +186,14 @@ export default async function Dashboard() {
                 NL: 'bg-purple-500'
               }
               return (
-                <div key={province}>
+                <Link
+                  key={province}
+                  href={`/businesses?provinces=${province}`}
+                  className="block hover:bg-[hsl(var(--background-tertiary))] rounded-lg p-2 -m-2 transition-colors"
+                >
                   <div className="flex items-center justify-between text-sm mb-1">
                     <span>{name}</span>
-                    <span className="text-[hsl(var(--muted))]">{count}</span>
+                    <span className="text-[hsl(var(--muted))]">{count} →</span>
                   </div>
                   <div className="h-2 bg-[hsl(var(--background-tertiary))] rounded-full overflow-hidden">
                     <div
@@ -197,7 +201,7 @@ export default async function Dashboard() {
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               )
             })}
           </div>

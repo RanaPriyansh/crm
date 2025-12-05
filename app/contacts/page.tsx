@@ -141,22 +141,46 @@ export default function ContactsPage() {
 
                             <div className="space-y-2 text-sm">
                                 {contact.email && (
-                                    <a
-                                        href={`mailto:${contact.email}`}
-                                        className="flex items-center gap-2 text-[hsl(var(--muted))] hover:text-[hsl(var(--color-primary))]"
-                                    >
-                                        <Mail className="w-4 h-4" />
-                                        {contact.email}
-                                    </a>
+                                    <div className="flex items-center justify-between">
+                                        <a
+                                            href={`mailto:${contact.email}`}
+                                            className="flex items-center gap-2 text-[hsl(var(--muted))] hover:text-[hsl(var(--color-primary))] truncate"
+                                        >
+                                            <Mail className="w-4 h-4 flex-shrink-0" />
+                                            <span className="truncate">{contact.email}</span>
+                                        </a>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(contact.email!)
+                                                alert('Email copied!')
+                                            }}
+                                            className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--color-primary))] px-1"
+                                            title="Copy email"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
                                 )}
                                 {contact.phone_raw && (
-                                    <a
-                                        href={`tel:${contact.phone_e164 || contact.phone_raw}`}
-                                        className="flex items-center gap-2 text-[hsl(var(--muted))] hover:text-[hsl(var(--color-primary))]"
-                                    >
-                                        <Phone className="w-4 h-4" />
-                                        {formatPhone(contact.phone_raw)}
-                                    </a>
+                                    <div className="flex items-center justify-between">
+                                        <a
+                                            href={`tel:${contact.phone_e164 || contact.phone_raw}`}
+                                            className="flex items-center gap-2 text-[hsl(var(--muted))] hover:text-[hsl(var(--color-primary))]"
+                                        >
+                                            <Phone className="w-4 h-4 flex-shrink-0" />
+                                            {formatPhone(contact.phone_raw)}
+                                        </a>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(contact.phone_raw!)
+                                                alert('Phone copied!')
+                                            }}
+                                            className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--color-primary))] px-1"
+                                            title="Copy phone"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
                                 )}
                                 {contact.businesses?.name && (
                                     <Link
@@ -166,6 +190,28 @@ export default function ContactsPage() {
                                         <Building2 className="w-4 h-4" />
                                         {contact.businesses.name}
                                     </Link>
+                                )}
+                            </div>
+
+                            {/* Quick Action Buttons */}
+                            <div className="flex gap-2 mt-4 pt-3 border-t border-[hsl(var(--border))]">
+                                {contact.phone_raw && (
+                                    <a
+                                        href={`tel:${contact.phone_e164 || contact.phone_raw}`}
+                                        className="btn btn-ghost flex-1 py-1.5 text-sm justify-center"
+                                    >
+                                        <Phone className="w-4 h-4" />
+                                        Call
+                                    </a>
+                                )}
+                                {contact.email && (
+                                    <a
+                                        href={`mailto:${contact.email}`}
+                                        className="btn btn-ghost flex-1 py-1.5 text-sm justify-center"
+                                    >
+                                        <Mail className="w-4 h-4" />
+                                        Email
+                                    </a>
                                 )}
                             </div>
                         </div>
