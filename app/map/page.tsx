@@ -106,7 +106,7 @@ export default function MapPage() {
     }
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex flex-col">
+        <div className="h-[calc(100vh-9rem)] flex flex-col glass-card overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))]">
                 <div className="flex items-center gap-4">

@@ -277,7 +277,7 @@ export default async function Dashboard() {
             <p className="font-medium">Search</p>
           </Link>
           <Link
-            href="/businesses?export=true"
+            href="/export"
             className="p-4 rounded-lg border border-[hsl(var(--border))] hover:border-green-500 hover:bg-[hsl(var(--background-tertiary))] transition-all text-center"
           >
             <svg className="w-8 h-8 mx-auto mb-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -23,6 +23,7 @@ import { Business, Contact, Interaction } from '@/lib/types'
 import { PROVINCE_NAMES, STATUS_CONFIG, SOURCE_CONFIG, formatPhone } from '@/lib/utils/phone'
 import { ContactModal } from '@/components/ContactModal'
 import { InteractionModal } from '@/components/InteractionModal'
+import { TagsManager } from '@/components/TagsManager'
 
 // Dynamic import Leaflet to avoid SSR issues
 const BusinessMap = dynamic(() => import('@/components/BusinessMap'), {
@@ -52,7 +53,7 @@ export default function BusinessDetailPage() {
 
     const fetchBusiness = useCallback(async () => {
         try {
-            const res = await fetch(`/api/businesses/${params.id}`)
+            const res = await fetch(`/api/businesses/${params.id}`, { cache: 'no-store' })
             if (!res.ok) {
                 if (res.status === 404) {
                     setError('Business not found')
@@ -246,6 +247,11 @@ export default function BusinessDetailPage() {
                                 <p>{business.description}</p>
                             </div>
                         )}
+
+                        {/* Tags */}
+                        <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
+                            <TagsManager businessId={business.id} />
+                        </div>
                     </div>
 
                     {/* Map */}

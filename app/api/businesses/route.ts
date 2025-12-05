@@ -17,12 +17,17 @@ export async function GET(request: Request) {
         const search = searchParams.get('search')
         const province = searchParams.get('province')
         const status = searchParams.get('status')
+        const tag = searchParams.get('tag')
 
         let businesses = devStore.getBusinesses()
 
         // Apply filters
         if (province) businesses = businesses.filter(b => b.province === province)
         if (status) businesses = businesses.filter(b => b.status === status)
+        if (tag) {
+            const businessIds = devStore.getBusinessIdsByTag(tag)
+            businesses = businesses.filter(b => businessIds.includes(b.id))
+        }
         if (search) {
             const q = search.toLowerCase()
             businesses = businesses.filter(b =>
@@ -69,16 +74,18 @@ export async function GET(request: Request) {
     }
 
     const { page, pageSize, search, province, status, source, sortBy, sortOrder } = queryResult.data
+    const tag = searchParams.get('tag')
     const offset = (page - 1) * pageSize
 
     let query = supabase
         .from('businesses')
-        .select('*', { count: 'exact' })
+        .select('*, business_tags!inner(tag_id)', { count: 'exact' })
         .is('deleted_at', null)
 
     if (province) query = query.eq('province', province)
     if (status) query = query.eq('status', status)
     if (source) query = query.eq('source', source)
+    if (tag) query = query.eq('business_tags.tag_id', tag)
 
     if (search) {
         query = query.textSearch('search_vector', search, {

@@ -41,8 +41,10 @@ export default function BusinessesPage() {
     const [search, setSearch] = useState(searchParams.get('search') || '')
     const [province, setProvince] = useState<Province | ''>(searchParams.get('province') as Province || '')
     const [status, setStatus] = useState<BusinessStatus | ''>(searchParams.get('status') as BusinessStatus || '')
+    const [tag, setTag] = useState(searchParams.get('tag') || '')
     const [page, setPage] = useState(Number(searchParams.get('page')) || 1)
     const [showFilters, setShowFilters] = useState(false)
+    const [availableTags, setAvailableTags] = useState<{ id: string; name: string }[]>([])
 
     // Dropdown state
     const [openDropdown, setOpenDropdown] = useState<string | null>(null)
@@ -56,6 +58,7 @@ export default function BusinessesPage() {
         if (search) params.set('search', search)
         if (province) params.set('province', province)
         if (status) params.set('status', status)
+        if (tag) params.set('tag', tag)
 
         try {
             const res = await fetch(`/api/businesses?${params}`)
@@ -70,10 +73,17 @@ export default function BusinessesPage() {
         } finally {
             setLoading(false)
         }
-    }, [page, search, province, status])
+    }, [page, search, province, status, tag])
 
     useEffect(() => {
         fetchBusinesses()
+        // Fetch tags for filter
+        fetch('/api/tags')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setAvailableTags(data)
+            })
+            .catch(err => console.error('Failed to fetch tags:', err))
     }, [fetchBusinesses])
 
     // Update URL when filters change
@@ -82,11 +92,12 @@ export default function BusinessesPage() {
         if (search) params.set('search', search)
         if (province) params.set('province', province)
         if (status) params.set('status', status)
+        if (tag) params.set('tag', tag)
         if (page > 1) params.set('page', page.toString())
 
         const queryString = params.toString()
         router.replace(`/businesses${queryString ? `?${queryString}` : ''}`, { scroll: false })
-    }, [search, province, status, page, router])
+    }, [search, province, status, tag, page, router])
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
@@ -170,9 +181,20 @@ export default function BusinessesPage() {
                             ))}
                         </select>
 
-                        {(province || status) && (
+                        <select
+                            value={tag}
+                            onChange={(e) => { setTag(e.target.value); setPage(1); }}
+                            className="input w-48"
+                        >
+                            <option value="">All Tags</option>
+                            {availableTags.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                        </select>
+
+                        {(province || status || tag) && (
                             <button
-                                onClick={() => { setProvince(''); setStatus(''); setPage(1); }}
+                                onClick={() => { setProvince(''); setStatus(''); setTag(''); setPage(1); }}
                                 className="btn btn-ghost text-sm"
                             >
                                 Clear filters

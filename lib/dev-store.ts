@@ -275,3 +275,90 @@ export function deleteInteraction(id: string): boolean {
     return true
 }
 
+// Tags
+interface BusinessTag {
+    id: string
+    business_id: string
+    tag_id: string
+    created_at: string
+}
+
+export function getTags(): { id: string; name: string; color: string; created_at: string }[] {
+    return readStore<{ id: string; name: string; color: string; created_at: string }>('tags')
+}
+
+export function createTag(data: { name: string; color?: string }): { id: string; name: string; color: string; created_at: string } {
+    const tags = readStore<{ id: string; name: string; color: string; created_at: string }>('tags')
+    const now = new Date().toISOString()
+
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+    const tag = {
+        id: crypto.randomUUID(),
+        name: data.name,
+        color: data.color || colors[Math.floor(Math.random() * colors.length)],
+        created_at: now,
+    }
+
+    tags.push(tag)
+    writeStore('tags', tags)
+    return tag
+}
+
+export function deleteTag(id: string): boolean {
+    const tags = readStore<{ id: string; name: string; color: string; created_at: string }>('tags')
+    const index = tags.findIndex(t => t.id === id)
+    if (index === -1) return false
+
+    tags.splice(index, 1)
+    writeStore('tags', tags)
+
+    // Also remove all business associations
+    const businessTags = readStore<BusinessTag>('business_tags')
+    const filtered = businessTags.filter(bt => bt.tag_id !== id)
+    writeStore('business_tags', filtered)
+
+    return true
+}
+
+export function getBusinessTags(businessId: string): { id: string; name: string; color: string; created_at: string }[] {
+    const businessTags = readStore<BusinessTag>('business_tags')
+    const tags = readStore<{ id: string; name: string; color: string; created_at: string }>('tags')
+
+    const tagIds = businessTags.filter(bt => bt.business_id === businessId).map(bt => bt.tag_id)
+    return tags.filter(t => tagIds.includes(t.id))
+}
+
+export function addTagToBusiness(businessId: string, tagId: string): BusinessTag | null {
+    const businessTags = readStore<BusinessTag>('business_tags')
+
+    if (businessTags.some(bt => bt.business_id === businessId && bt.tag_id === tagId)) {
+        return null
+    }
+
+    const now = new Date().toISOString()
+    const businessTag: BusinessTag = {
+        id: crypto.randomUUID(),
+        business_id: businessId,
+        tag_id: tagId,
+        created_at: now,
+    }
+
+    businessTags.push(businessTag)
+    writeStore('business_tags', businessTags)
+    return businessTag
+}
+
+export function removeTagFromBusiness(businessId: string, tagId: string): boolean {
+    const businessTags = readStore<BusinessTag>('business_tags')
+    const index = businessTags.findIndex(bt => bt.business_id === businessId && bt.tag_id === tagId)
+    if (index === -1) return false
+
+    businessTags.splice(index, 1)
+    writeStore('business_tags', businessTags)
+    return true
+}
+
+export function getBusinessIdsByTag(tagId: string): string[] {
+    const businessTags = readStore<BusinessTag>('business_tags')
+    return businessTags.filter(bt => bt.tag_id === tagId).map(bt => bt.business_id)
+}
