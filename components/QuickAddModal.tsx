@@ -1,15 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { X, Zap, Loader2 } from 'lucide-react'
 import { PROVINCE_NAMES } from '@/lib/utils/phone'
+import { Business } from '@/lib/types'
+
+interface QuickAddPayload {
+    name: string
+    province: string
+    city?: string | null
+    phone_raw?: string | null
+    category?: string | null
+}
 
 interface QuickAddModalProps {
     onClose: () => void
-    onCreated: () => void
+    onCreated: (business: Business | null) => void
+    onCreate?: (payload: QuickAddPayload) => Promise<Business>
+    isSubmitting?: boolean
 }
 
-export function QuickAddModal({ onClose, onCreated }: QuickAddModalProps) {
+export function QuickAddModal({ onClose, onCreated, onCreate, isSubmitting }: QuickAddModalProps) {
     const [name, setName] = useState('')
     const [province, setProvince] = useState('NS')
     const [city, setCity] = useState('')
@@ -17,6 +28,8 @@ export function QuickAddModal({ onClose, onCreated }: QuickAddModalProps) {
     const [category, setCategory] = useState('')
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+
+    const pending = useMemo(() => saving || isSubmitting, [isSubmitting, saving])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -29,24 +42,32 @@ export function QuickAddModal({ onClose, onCreated }: QuickAddModalProps) {
         setError('')
 
         try {
-            const res = await fetch('/api/businesses', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: name.trim(),
-                    province,
-                    city: city.trim() || null,
-                    phone_raw: phone.trim() || null,
-                    category: category.trim() || null,
-                })
-            })
-
-            if (!res.ok) {
-                const data = await res.json()
-                throw new Error(data.error || 'Failed to create business')
+            const payload: QuickAddPayload = {
+                name: name.trim(),
+                province,
+                city: city.trim() || null,
+                phone_raw: phone.trim() || null,
+                category: category.trim() || null,
             }
 
-            onCreated()
+            if (onCreate) {
+                const created = await onCreate(payload)
+                onCreated(created)
+            } else {
+                const res = await fetch('/api/businesses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+
+                if (!res.ok) {
+                    const data = await res.json()
+                    throw new Error(data.error || 'Failed to create business')
+                }
+
+                const business = await res.json()
+                onCreated(business)
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred')
         } finally {
@@ -138,8 +159,8 @@ export function QuickAddModal({ onClose, onCreated }: QuickAddModalProps) {
                         <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
                             Cancel
                         </button>
-                        <button type="submit" disabled={saving} className="btn btn-primary flex-1">
-                            {saving ? (
+                        <button type="submit" disabled={pending} className="btn btn-primary flex-1">
+                            {pending ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     Saving...
