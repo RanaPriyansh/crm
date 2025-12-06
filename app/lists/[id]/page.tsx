@@ -12,7 +12,8 @@ import {
     MapPin,
     Phone,
     Mail,
-    ExternalLink
+    ExternalLink,
+    Download
 } from 'lucide-react'
 import { List, Business, Contact } from '@/lib/types'
 import { PROVINCE_NAMES, formatPhone } from '@/lib/utils/phone'
@@ -89,6 +90,69 @@ export default function ListDetailPage() {
         }
     }
 
+    const handleExportCSV = () => {
+        if (!list) return
+
+        const rows: string[][] = []
+
+        // Export businesses
+        if (list.businesses.length > 0) {
+            rows.push(['Type', 'Name', 'Category', 'City', 'Province', 'Phone', 'Email', 'Website', 'Added Date'])
+            list.businesses.forEach(({ added_at, data }) => {
+                rows.push([
+                    'Business',
+                    data.name || '',
+                    data.category || '',
+                    data.city || '',
+                    data.province || '',
+                    data.phone_raw || '',
+                    data.email || '',
+                    data.website || '',
+                    new Date(added_at).toLocaleDateString()
+                ])
+            })
+        }
+
+        // Export contacts (separate section if mixed)
+        if (list.contacts.length > 0) {
+            if (rows.length > 0) rows.push([]) // Empty row separator
+            rows.push(['Type', 'First Name', 'Last Name', 'Position', 'Email', 'Phone', 'Added Date'])
+            list.contacts.forEach(({ added_at, data }) => {
+                rows.push([
+                    'Contact',
+                    data.first_name || '',
+                    data.last_name || '',
+                    data.position || '',
+                    data.email || '',
+                    data.phone_raw || '',
+                    new Date(added_at).toLocaleDateString()
+                ])
+            })
+        }
+
+        // Convert to CSV string
+        const csvContent = rows.map(row =>
+            row.map(cell => {
+                // Escape quotes and wrap in quotes if contains comma or quote
+                const escaped = String(cell).replace(/"/g, '""')
+                return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
+                    ? `"${escaped}"`
+                    : escaped
+            }).join(',')
+        ).join('\n')
+
+        // Download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${list.name.replace(/[^a-z0-9]/gi, '_')}_export.csv`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+    }
+
     if (loading) {
         return (
             <div className="glass-card p-12 text-center text-[hsl(var(--muted))]">
@@ -149,8 +213,20 @@ export default function ListDetailPage() {
                         </div>
                     )}
                 </div>
-                <div className="text-right text-sm text-[hsl(var(--muted))]">
-                    {totalItems} item{totalItems !== 1 ? 's' : ''}
+                <div className="flex items-center gap-3">
+                    {totalItems > 0 && (
+                        <button
+                            onClick={handleExportCSV}
+                            className="btn btn-secondary"
+                            title="Export to CSV"
+                        >
+                            <Download className="w-4 h-4" />
+                            Export CSV
+                        </button>
+                    )}
+                    <div className="text-right text-sm text-[hsl(var(--muted))]">
+                        {totalItems} item{totalItems !== 1 ? 's' : ''}
+                    </div>
                 </div>
             </div>
 

@@ -38,7 +38,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={inter.variable}>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         {showSidebar && <Sidebar />}
         <main className={showSidebar ? "ml-64 min-h-screen" : "min-h-screen"}>
           {showSidebar && (
