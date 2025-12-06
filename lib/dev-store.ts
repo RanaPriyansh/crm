@@ -595,3 +595,202 @@ export function getListsForItem(itemId: string, itemType: 'business' | 'contact'
 
     return lists.filter(l => listIds.includes(l.id))
 }
+
+// Registry Import Engine
+import type {
+    RegistryJob,
+    RegistryRecord,
+    RegistrySource,
+    RegistryJobMode,
+    RegistryJobStats,
+    NormalizedBusiness
+} from './types'
+
+const DEFAULT_STATS: RegistryJobStats = {
+    fetched: 0,
+    normalized: 0,
+    created: 0,
+    updated: 0,
+    duplicates: 0,
+    errors: 0,
+}
+
+export function getRegistryJobs(): RegistryJob[] {
+    return readStore<RegistryJob>('registry_jobs')
+}
+
+export function getRegistryJobById(id: string): RegistryJob | null {
+    const jobs = readStore<RegistryJob>('registry_jobs')
+    return jobs.find(j => j.id === id) || null
+}
+
+export function createRegistryJob(data: {
+    source: RegistrySource
+    mode: RegistryJobMode
+    query?: string
+}): RegistryJob {
+    const jobs = readStore<RegistryJob>('registry_jobs')
+    const now = new Date().toISOString()
+
+    const job: RegistryJob = {
+        id: crypto.randomUUID(),
+        source: data.source,
+        mode: data.mode,
+        query: data.query || null,
+        status: 'pending',
+        cursor: null,
+        stats: { ...DEFAULT_STATS },
+        logs: [`Job created for ${data.source}`],
+        created_at: now,
+        started_at: null,
+        finished_at: null,
+    }
+
+    jobs.push(job)
+    writeStore('registry_jobs', jobs)
+    return job
+}
+
+export function updateRegistryJob(
+    id: string,
+    updates: Partial<Pick<RegistryJob, 'status' | 'cursor' | 'stats' | 'started_at' | 'finished_at'>>
+): RegistryJob | null {
+    const jobs = readStore<RegistryJob>('registry_jobs')
+    const index = jobs.findIndex(j => j.id === id)
+    if (index === -1) return null
+
+    jobs[index] = { ...jobs[index], ...updates }
+    writeStore('registry_jobs', jobs)
+    return jobs[index]
+}
+
+export function appendJobLog(id: string, message: string): void {
+    const jobs = readStore<RegistryJob>('registry_jobs')
+    const index = jobs.findIndex(j => j.id === id)
+    if (index === -1) return
+
+    jobs[index].logs.push(`[${new Date().toISOString()}] ${message}`)
+    writeStore('registry_jobs', jobs)
+}
+
+export function getRegistryRecords(jobId: string): RegistryRecord[] {
+    const records = readStore<RegistryRecord>('registry_records')
+    return records.filter(r => r.job_id === jobId)
+}
+
+export function addRegistryRecord(data: {
+    job_id: string
+    source: RegistrySource
+    raw_data: Record<string, unknown>
+    dedupe_key: string
+}): RegistryRecord | null {
+    const records = readStore<RegistryRecord>('registry_records')
+
+    // Check for duplicate
+    if (records.some(r => r.dedupe_key === data.dedupe_key)) {
+        return null // Duplicate
+    }
+
+    const record: RegistryRecord = {
+        id: crypto.randomUUID(),
+        job_id: data.job_id,
+        source: data.source,
+        raw_data: data.raw_data,
+        normalized_data: null,
+        status: 'pending',
+        error_message: null,
+        dedupe_key: data.dedupe_key,
+        created_at: new Date().toISOString(),
+    }
+
+    records.push(record)
+    writeStore('registry_records', records)
+    return record
+}
+
+export function updateRegistryRecord(
+    id: string,
+    updates: Partial<Pick<RegistryRecord, 'normalized_data' | 'status' | 'error_message'>>
+): RegistryRecord | null {
+    const records = readStore<RegistryRecord>('registry_records')
+    const index = records.findIndex(r => r.id === id)
+    if (index === -1) return null
+
+    records[index] = { ...records[index], ...updates }
+    writeStore('registry_records', records)
+    return records[index]
+}
+
+export function importRegistryRecord(recordId: string): Business | null {
+    const records = readStore<RegistryRecord>('registry_records')
+    const record = records.find(r => r.id === recordId)
+    if (!record || !record.normalized_data || record.status !== 'processed') {
+        return null
+    }
+
+    const norm = record.normalized_data
+
+    // Check for existing business with same registry_id
+    const businesses = readStore<Business>('businesses')
+    const existing = businesses.find(
+        b => b.source_ref === `${record.source}:${norm.registry_id}` && !b.deleted_at
+    )
+    if (existing) return existing
+
+    // Create new business
+    const now = new Date().toISOString()
+    const business: Business = {
+        id: crypto.randomUUID(),
+        name: norm.name,
+        category: null,
+        description: norm.is_numbered_company ? 'Numbered/Holding Company' : null,
+        address_line1: norm.address,
+        address_line2: null,
+        city: norm.city,
+        province: norm.province,
+        postal_code: norm.postal_code,
+        phone_raw: null,
+        phone_e164: null,
+        email: null,
+        website: null,
+        latitude: null,
+        longitude: null,
+        naics_code: null,
+        size_band: null,
+        status: norm.is_active ? 'active' : 'inactive',
+        source: 'scraper', // Using existing source type
+        source_ref: `${record.source}:${norm.registry_id}`,
+        contact_count: 0,
+        last_interaction_at: null,
+        created_by: null,
+        updated_by: null,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+    }
+
+    businesses.push(business)
+    writeStore('businesses', businesses)
+
+    // Mark record as processed
+    updateRegistryRecord(recordId, { status: 'processed' })
+
+    return business
+}
+
+export function getRegistryStats(): { totalJobs: number; totalRecords: number; bySource: Record<string, number> } {
+    const jobs = readStore<RegistryJob>('registry_jobs')
+    const records = readStore<RegistryRecord>('registry_records')
+
+    const bySource: Record<string, number> = {}
+    for (const record of records) {
+        bySource[record.source] = (bySource[record.source] || 0) + 1
+    }
+
+    return {
+        totalJobs: jobs.length,
+        totalRecords: records.length,
+        bySource,
+    }
+}
+

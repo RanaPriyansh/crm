@@ -181,3 +181,67 @@ export interface DashboardStats {
     }[]
     recentlyAdded: Business[]
 }
+
+// Registry Import Engine Types
+export type RegistrySource =
+    | 'ns_registry'      // Nova Scotia Joint Stock
+    | 'nb_registry'      // New Brunswick Corporate
+    | 'pei_registry'     // PEI Corporate Names
+    | 'nl_registry'      // Newfoundland Companies
+    | 'opencorporates'   // API enrichment
+    | 'statscan'         // Business Counts
+
+export type RegistryJobStatus = 'pending' | 'running' | 'completed' | 'failed'
+export type RegistryRecordStatus = 'pending' | 'processed' | 'error' | 'duplicate'
+export type RegistryJobMode = 'full_refresh' | 'incremental'
+
+export interface RegistryJobStats {
+    fetched: number
+    normalized: number
+    created: number
+    updated: number
+    duplicates: number
+    errors: number
+}
+
+export interface RegistryJob {
+    id: string
+    source: RegistrySource
+    mode: RegistryJobMode
+    query: string | null
+    status: RegistryJobStatus
+    cursor: string | null                // Resumable position
+    stats: RegistryJobStats
+    logs: string[]                       // Streaming log entries
+    created_at: string
+    started_at: string | null
+    finished_at: string | null
+}
+
+export interface RegistryRecord {
+    id: string
+    job_id: string
+    source: RegistrySource
+    raw_data: Record<string, unknown>    // Original JSON
+    normalized_data: NormalizedBusiness | null
+    status: RegistryRecordStatus
+    error_message: string | null
+    dedupe_key: string                   // hash(source + registry_id)
+    created_at: string
+}
+
+export interface NormalizedBusiness {
+    legal_name: string
+    operating_name: string | null        // Trade name if available
+    name: string                         // operating_name || legal_name
+    registry_id: string
+    is_numbered_company: boolean         // "3294821 NS Ltd" detection
+    is_active: boolean                   // Strict status filter
+    status_raw: string                   // Original status
+    incorporation_date: string | null
+    dissolution_date: string | null
+    address: string | null
+    city: string | null
+    province: Province
+    postal_code: string | null
+}

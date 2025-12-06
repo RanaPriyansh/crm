@@ -14,7 +14,8 @@ import {
     Download,
     MessageSquare,
     Tag,
-    ListChecks
+    ListChecks,
+    Database
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -25,6 +26,7 @@ const navigation = [
     { name: 'Lists', href: '/lists', icon: ListChecks },
     { name: 'Tags', href: '/tags', icon: Tag },
     { name: 'Map View', href: '/map', icon: Map },
+    { name: 'Registry Import', href: '/registry', icon: Database },
     { name: 'Import', href: '/import', icon: Upload },
     { name: 'Export', href: '/export', icon: Download },
 ]
