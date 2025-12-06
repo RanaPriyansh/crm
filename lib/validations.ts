@@ -35,6 +35,37 @@ export const businessInputSchema = z.object({
     source_ref: z.string().max(500).optional().nullable(),
 })
 
+export const businessSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    category: z.string().nullable(),
+    description: z.string().nullable(),
+    address_line1: z.string().nullable(),
+    address_line2: z.string().nullable(),
+    city: z.string().nullable(),
+    province: provinceSchema,
+    postal_code: z.string().nullable(),
+    phone_raw: z.string().nullable(),
+    phone_e164: z.string().nullable(),
+    email: z.string().nullable(),
+    website: z.string().nullable(),
+    latitude: z.number().nullable(),
+    longitude: z.number().nullable(),
+    naics_code: z.string().nullable(),
+    size_band: sizeBandSchema.nullable(),
+    status: businessStatusSchema,
+    source: businessSourceSchema,
+    source_ref: z.string().nullable(),
+    contact_count: z.number(),
+    last_interaction_at: z.string().datetime().nullable(),
+    created_by: z.string().nullable(),
+    updated_by: z.string().nullable(),
+    created_at: z.string().datetime(),
+    updated_at: z.string().datetime(),
+    deleted_at: z.string().datetime().nullable(),
+})
+
+export type BusinessSchema = z.infer<typeof businessSchema>
 export type BusinessInputSchema = z.infer<typeof businessInputSchema>
 export type BusinessFormInput = z.input<typeof businessInputSchema>
 
@@ -49,6 +80,22 @@ export const contactInputSchema = z.object({
     is_primary: z.boolean().optional().default(false),
 })
 
+export const contactSchema = z.object({
+    id: z.string().uuid(),
+    business_id: z.string().uuid(),
+    first_name: z.string().nullable(),
+    last_name: z.string().nullable(),
+    position: z.string().nullable(),
+    email: z.string().nullable(),
+    phone_raw: z.string().nullable(),
+    phone_e164: z.string().nullable(),
+    is_primary: z.boolean(),
+    created_by: z.string().nullable(),
+    created_at: z.string().datetime(),
+    updated_at: z.string().datetime(),
+})
+
+export type ContactSchema = z.infer<typeof contactSchema>
 export type ContactInputSchema = z.infer<typeof contactInputSchema>
 
 // Interaction schemas
@@ -66,6 +113,21 @@ export const interactionInputSchema = z.object({
     occurred_at: z.string().datetime().optional(),
 })
 
+export const interactionSchema = z.object({
+    id: z.string().uuid(),
+    business_id: z.string().uuid(),
+    contact_id: z.string().uuid().nullable(),
+    type: interactionTypeSchema,
+    direction: interactionDirectionSchema,
+    subject: z.string().nullable(),
+    notes: z.string().nullable(),
+    external_ref: z.string().nullable(),
+    occurred_at: z.string().datetime(),
+    user_id: z.string().nullable(),
+    created_at: z.string().datetime(),
+})
+
+export type InteractionSchema = z.infer<typeof interactionSchema>
 export type InteractionInputSchema = z.infer<typeof interactionInputSchema>
 
 // Query params schemas
