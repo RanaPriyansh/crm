@@ -18,49 +18,7 @@ import {
     Check
 } from 'lucide-react'
 import { PROVINCE_NAMES, STATUS_CONFIG, SOURCE_CONFIG } from '@/lib/utils/phone'
-
-// Filter types
-export interface FilterState {
-    search: string
-    provinces: string[]
-    statuses: string[]
-    sources: string[]
-    sizeBands: string[]
-    tags: string[]
-    city: string
-    category: string
-    naicsCode: string
-    hasEmail: boolean | null
-    hasPhone: boolean | null
-    hasWebsite: boolean | null
-    hasContacts: boolean | null
-    hasCoordinates: boolean | null
-    createdAfter: string
-    createdBefore: string
-    interactionAfter: string
-    interactionBefore: string
-}
-
-export const defaultFilters: FilterState = {
-    search: '',
-    provinces: [],
-    statuses: [],
-    sources: [],
-    sizeBands: [],
-    tags: [],
-    city: '',
-    category: '',
-    naicsCode: '',
-    hasEmail: null,
-    hasPhone: null,
-    hasWebsite: null,
-    hasContacts: null,
-    hasCoordinates: null,
-    createdAfter: '',
-    createdBefore: '',
-    interactionAfter: '',
-    interactionBefore: '',
-}
+import { FilterState, defaultFilters } from '@/lib/businesses/filters'
 
 interface FilterPreset {
     id: string

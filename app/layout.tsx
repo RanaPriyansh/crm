@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { createClient } from "@/lib/supabase/server";
+import { QueryProvider } from "@/components/QueryProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -39,17 +40,19 @@ export default async function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="antialiased">
-        {showSidebar && <Sidebar />}
-        <main className={showSidebar ? "ml-64 min-h-screen" : "min-h-screen"}>
-          {showSidebar && (
-            <header className="sticky top-0 z-40 bg-[hsl(var(--background))]/80 backdrop-blur-sm border-b border-[hsl(var(--border))] px-8 py-4">
-              <GlobalSearch />
-            </header>
-          )}
-          <div className={showSidebar ? "p-8" : ""}>
-            {children}
-          </div>
-        </main>
+        <QueryProvider>
+          {showSidebar && <Sidebar />}
+          <main className={showSidebar ? "ml-64 min-h-screen" : "min-h-screen"}>
+            {showSidebar && (
+              <header className="sticky top-0 z-40 bg-[hsl(var(--background))]/80 backdrop-blur-sm border-b border-[hsl(var(--border))] px-8 py-4">
+                <GlobalSearch />
+              </header>
+            )}
+            <div className={showSidebar ? "p-8" : ""}>
+              {children}
+            </div>
+          </main>
+        </QueryProvider>
       </body>
     </html>
   );
