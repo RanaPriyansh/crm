@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MapPin, Mail, Lock, ArrowRight } from 'lucide-react'
+import { configInvalid, configurationErrorMessage, isDevMode } from '@/lib/config'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
@@ -12,13 +13,24 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
 
-    const supabase = createClient()
+    const supabase = useMemo(() => {
+        if (configInvalid || isDevMode) return null
+        return createClient()
+    }, [])
 
     const handleEmailAuth = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
         setMessage(null)
+
+        if (!supabase) {
+            setError(configInvalid
+                ? configurationErrorMessage
+                : 'Authentication is disabled while development mode is active.')
+            setLoading(false)
+            return
+        }
 
         try {
             if (isSignUp) {
@@ -49,6 +61,14 @@ export default function LoginPage() {
     const handleGoogleAuth = async () => {
         setLoading(true)
         setError(null)
+
+        if (!supabase) {
+            setError(configInvalid
+                ? configurationErrorMessage
+                : 'Authentication is disabled while development mode is active.')
+            setLoading(false)
+            return
+        }
 
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
@@ -122,6 +142,14 @@ export default function LoginPage() {
                                 : 'Sign in to access your dashboard'}
                         </p>
                     </div>
+
+                    {(configInvalid || isDevMode) && (
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-sm">
+                            {configInvalid
+                                ? configurationErrorMessage
+                                : 'Development mode is active and authentication is bypassed. Set NEXT_PUBLIC_DEV_MODE=true only in local development.'}
+                        </div>
+                    )}
 
                     {/* Google OAuth */}
                     <button

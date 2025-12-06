@@ -1,7 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { configInvalid, configurationErrorMessage } from '../config'
 
 export async function createClient() {
+    if (configInvalid) {
+        throw new Error(configurationErrorMessage)
+    }
+
     const cookieStore = await cookies()
 
     return createServerClient(
@@ -29,6 +34,14 @@ export async function createClient() {
 
 // Service role client for admin operations (bypasses RLS)
 export function createServiceClient() {
+    if (configInvalid) {
+        throw new Error(configurationErrorMessage)
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for service client creation')
+    }
+
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,

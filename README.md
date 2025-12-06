@@ -123,7 +123,7 @@ A modern, full-featured Customer Relationship Management system built specifical
 
 ### Development Mode
 
-If Supabase is not configured, the app automatically runs in **Development Mode** using local JSON file storage in `.dev-data/`. This is perfect for testing and development without a database connection.
+To intentionally run without Supabase, set `NEXT_PUBLIC_DEV_MODE=true` in `.env.local`. When this flag is present and Supabase credentials are missing, the app uses the local JSON file storage in `.dev-data/`. Only enable this in local development—never in production—because authentication is bypassed.
 
 ---
 

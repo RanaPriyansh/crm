@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import * as devStore from '@/lib/dev-store'
 import { z } from 'zod'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const isDevMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseUrl.startsWith('https://')
+import { isDevMode } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
