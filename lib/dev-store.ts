@@ -104,6 +104,12 @@ export function deleteBusiness(id: string): boolean {
 
     businesses[index].deleted_at = new Date().toISOString()
     writeStore('businesses', businesses)
+
+    // Cascade delete: remove from all lists
+    const listItems = readStore<{ list_id: string; item_id: string; item_type: string; added_at: string }>('list_items')
+    const filtered = listItems.filter(li => !(li.item_id === id && li.item_type === 'business'))
+    writeStore('list_items', filtered)
+
     return true
 }
 
@@ -196,6 +202,11 @@ export function deleteContact(id: string): boolean {
         businesses[bizIndex].contact_count = Math.max(0, (businesses[bizIndex].contact_count || 1) - 1)
         writeStore('businesses', businesses)
     }
+
+    // Cascade delete: remove from all lists
+    const listItems = readStore<{ list_id: string; item_id: string; item_type: string; added_at: string }>('list_items')
+    const filtered = listItems.filter(li => !(li.item_id === id && li.item_type === 'contact'))
+    writeStore('list_items', filtered)
 
     return true
 }
@@ -361,4 +372,226 @@ export function removeTagFromBusiness(businessId: string, tagId: string): boolea
 export function getBusinessIdsByTag(tagId: string): string[] {
     const businessTags = readStore<BusinessTag>('business_tags')
     return businessTags.filter(bt => bt.tag_id === tagId).map(bt => bt.business_id)
+}
+
+// Lists
+interface ListStore {
+    id: string
+    name: string
+    description: string | null
+    type: 'business' | 'contact' | 'mixed'
+    color: string
+    created_at: string
+    updated_at: string
+}
+
+interface ListItemStore {
+    list_id: string
+    item_id: string
+    item_type: 'business' | 'contact'
+    added_at: string
+}
+
+const LIST_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+
+export function getLists() {
+    const lists = readStore<ListStore>('lists')
+    const listItems = readStore<ListItemStore>('list_items')
+
+    return lists.map(list => {
+        const items = listItems.filter(li => li.list_id === list.id)
+        return {
+            ...list,
+            stats: {
+                businessCount: items.filter(i => i.item_type === 'business').length,
+                contactCount: items.filter(i => i.item_type === 'contact').length,
+            }
+        }
+    })
+}
+
+export function getListById(id: string) {
+    const lists = readStore<ListStore>('lists')
+    const list = lists.find(l => l.id === id)
+    if (!list) return null
+
+    const listItems = readStore<ListItemStore>('list_items')
+    const items = listItems.filter(li => li.list_id === id)
+
+    // Resolve actual business/contact data
+    const businesses = readStore<Business>('businesses')
+    const contacts = readStore<Contact>('contacts')
+
+    const businessItems = items
+        .filter(i => i.item_type === 'business')
+        .map(i => {
+            const business = businesses.find(b => b.id === i.item_id && !b.deleted_at)
+            return business ? { ...i, data: business } : null
+        })
+        .filter(Boolean)
+
+    const contactItems = items
+        .filter(i => i.item_type === 'contact')
+        .map(i => {
+            const contact = contacts.find(c => c.id === i.item_id)
+            return contact ? { ...i, data: contact } : null
+        })
+        .filter(Boolean)
+
+    return {
+        ...list,
+        stats: {
+            businessCount: businessItems.length,
+            contactCount: contactItems.length,
+        },
+        businesses: businessItems,
+        contacts: contactItems,
+    }
+}
+
+export function createList(data: { name: string; description?: string; color?: string }): ListStore & { stats: { businessCount: number; contactCount: number } } {
+    const lists = readStore<ListStore>('lists')
+    const now = new Date().toISOString()
+
+    const list: ListStore = {
+        id: crypto.randomUUID(),
+        name: data.name,
+        description: data.description || null,
+        type: 'mixed', // Will be determined by what's added
+        color: data.color || LIST_COLORS[Math.floor(Math.random() * LIST_COLORS.length)],
+        created_at: now,
+        updated_at: now,
+    }
+
+    lists.push(list)
+    writeStore('lists', lists)
+
+    return { ...list, stats: { businessCount: 0, contactCount: 0 } }
+}
+
+export function updateList(id: string, data: { name?: string; description?: string; color?: string }): ListStore | null {
+    const lists = readStore<ListStore>('lists')
+    const index = lists.findIndex(l => l.id === id)
+    if (index === -1) return null
+
+    lists[index] = {
+        ...lists[index],
+        ...data,
+        updated_at: new Date().toISOString(),
+    }
+    writeStore('lists', lists)
+    return lists[index]
+}
+
+export function deleteList(id: string): boolean {
+    const lists = readStore<ListStore>('lists')
+    const index = lists.findIndex(l => l.id === id)
+    if (index === -1) return false
+
+    lists.splice(index, 1)
+    writeStore('lists', lists)
+
+    // Also remove all list items
+    const listItems = readStore<ListItemStore>('list_items')
+    const filtered = listItems.filter(li => li.list_id !== id)
+    writeStore('list_items', filtered)
+
+    return true
+}
+
+export function addToList(listId: string, itemId: string, itemType: 'business' | 'contact'): ListItemStore | null {
+    const listItems = readStore<ListItemStore>('list_items')
+
+    // Check if already in list
+    if (listItems.some(li => li.list_id === listId && li.item_id === itemId)) {
+        return null
+    }
+
+    const now = new Date().toISOString()
+    const item: ListItemStore = {
+        list_id: listId,
+        item_id: itemId,
+        item_type: itemType,
+        added_at: now,
+    }
+
+    listItems.push(item)
+    writeStore('list_items', listItems)
+
+    // Update list type if needed
+    updateListType(listId)
+
+    return item
+}
+
+export function addMultipleToList(listId: string, itemIds: string[], itemType: 'business' | 'contact'): number {
+    const listItems = readStore<ListItemStore>('list_items')
+    const now = new Date().toISOString()
+    let added = 0
+
+    for (const itemId of itemIds) {
+        // Skip if already in list
+        if (listItems.some(li => li.list_id === listId && li.item_id === itemId)) {
+            continue
+        }
+
+        listItems.push({
+            list_id: listId,
+            item_id: itemId,
+            item_type: itemType,
+            added_at: now,
+        })
+        added++
+    }
+
+    writeStore('list_items', listItems)
+
+    // Update list type
+    updateListType(listId)
+
+    return added
+}
+
+export function removeFromList(listId: string, itemId: string): boolean {
+    const listItems = readStore<ListItemStore>('list_items')
+    const index = listItems.findIndex(li => li.list_id === listId && li.item_id === itemId)
+    if (index === -1) return false
+
+    listItems.splice(index, 1)
+    writeStore('list_items', listItems)
+
+    // Update list type
+    updateListType(listId)
+
+    return true
+}
+
+function updateListType(listId: string) {
+    const lists = readStore<ListStore>('lists')
+    const listItems = readStore<ListItemStore>('list_items')
+    const index = lists.findIndex(l => l.id === listId)
+    if (index === -1) return
+
+    const items = listItems.filter(li => li.list_id === listId)
+    const hasBusinesses = items.some(i => i.item_type === 'business')
+    const hasContacts = items.some(i => i.item_type === 'contact')
+
+    let type: 'business' | 'contact' | 'mixed' = 'mixed'
+    if (hasBusinesses && !hasContacts) type = 'business'
+    else if (hasContacts && !hasBusinesses) type = 'contact'
+
+    lists[index].type = type
+    lists[index].updated_at = new Date().toISOString()
+    writeStore('lists', lists)
+}
+
+export function getListsForItem(itemId: string, itemType: 'business' | 'contact') {
+    const listItems = readStore<ListItemStore>('list_items')
+    const lists = readStore<ListStore>('lists')
+
+    const listIds = listItems
+        .filter(li => li.item_id === itemId && li.item_type === itemType)
+        .map(li => li.list_id)
+
+    return lists.filter(l => listIds.includes(l.id))
 }

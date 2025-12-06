@@ -17,12 +17,15 @@ import {
     Edit,
     LayoutGrid,
     List,
-    Zap
+    Zap,
+    ListChecks,
+    X
 } from 'lucide-react'
 import { Business } from '@/lib/types'
 import { PROVINCE_NAMES, STATUS_CONFIG, formatPhone } from '@/lib/utils/phone'
 import { AdvancedFilters, FilterState, defaultFilters } from '@/components/AdvancedFilters'
 import { QuickAddModal } from '@/components/QuickAddModal'
+import { AddToListModal } from '@/components/AddToListModal'
 
 interface PaginatedResponse {
     data: Business[]
@@ -43,6 +46,8 @@ export default function BusinessesPage() {
     const [page, setPage] = useState(Number(searchParams.get('page')) || 1)
     const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
     const [showQuickAdd, setShowQuickAdd] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [showAddToList, setShowAddToList] = useState(false)
 
     // Advanced filters state
     const [filters, setFilters] = useState<FilterState>(() => ({
@@ -204,6 +209,31 @@ export default function BusinessesPage() {
                 </div>
             </div>
 
+            {/* Bulk Actions Bar */}
+            {selectedIds.size > 0 && (
+                <div className="glass-card p-4 flex items-center justify-between animate-fade-in">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">
+                            {selectedIds.size} business{selectedIds.size !== 1 ? 'es' : ''} selected
+                        </span>
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="text-sm text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] flex items-center gap-1"
+                        >
+                            <X className="w-4 h-4" />
+                            Clear
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setShowAddToList(true)}
+                        className="btn btn-primary"
+                    >
+                        <ListChecks className="w-4 h-4" />
+                        Add to List
+                    </button>
+                </div>
+            )}
+
             {/* Advanced Filters */}
             <AdvancedFilters
                 filters={filters}
@@ -229,6 +259,20 @@ export default function BusinessesPage() {
                     <table>
                         <thead>
                             <tr>
+                                <th className="w-12">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.size === businesses.length && businesses.length > 0}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedIds(new Set(businesses.map(b => b.id)))
+                                            } else {
+                                                setSelectedIds(new Set())
+                                            }
+                                        }}
+                                        className="w-4 h-4 rounded border-[hsl(var(--border))] accent-[hsl(var(--color-primary))]"
+                                    />
+                                </th>
                                 <th>Business</th>
                                 <th>Location</th>
                                 <th>Contact</th>
@@ -238,7 +282,23 @@ export default function BusinessesPage() {
                         </thead>
                         <tbody>
                             {businesses.map((business) => (
-                                <tr key={business.id}>
+                                <tr key={business.id} className={selectedIds.has(business.id) ? 'bg-[hsl(var(--color-primary))]/5' : ''}>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(business.id)}
+                                            onChange={(e) => {
+                                                const newSet = new Set(selectedIds)
+                                                if (e.target.checked) {
+                                                    newSet.add(business.id)
+                                                } else {
+                                                    newSet.delete(business.id)
+                                                }
+                                                setSelectedIds(newSet)
+                                            }}
+                                            className="w-4 h-4 rounded border-[hsl(var(--border))] accent-[hsl(var(--color-primary))]"
+                                        />
+                                    </td>
                                     <td>
                                         <Link
                                             href={`/businesses/${business.id}`}
@@ -416,6 +476,18 @@ export default function BusinessesPage() {
                     onCreated={() => {
                         setShowQuickAdd(false)
                         fetchBusinesses()
+                    }}
+                />
+            )}
+
+            {/* Add to List Modal */}
+            {showAddToList && (
+                <AddToListModal
+                    itemIds={Array.from(selectedIds)}
+                    itemType="business"
+                    onClose={() => setShowAddToList(false)}
+                    onAdded={() => {
+                        setSelectedIds(new Set())
                     }}
                 />
             )}

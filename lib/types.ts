@@ -91,6 +91,30 @@ export interface Tag {
     created_at: string
 }
 
+// Lists for organizing businesses and contacts
+export type ListType = 'business' | 'contact' | 'mixed'
+
+export interface List {
+    id: string
+    name: string
+    description: string | null
+    type: ListType
+    color: string
+    created_at: string
+    updated_at: string
+    stats: {
+        businessCount: number
+        contactCount: number
+    }
+}
+
+export interface ListItem {
+    list_id: string
+    item_id: string
+    item_type: 'business' | 'contact'
+    added_at: string
+}
+
 // Form input types (for creating/updating)
 export interface BusinessInput {
     name: string

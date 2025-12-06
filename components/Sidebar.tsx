@@ -13,7 +13,8 @@ import {
     Map,
     Download,
     MessageSquare,
-    Tag
+    Tag,
+    ListChecks
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -21,6 +22,7 @@ const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Businesses', href: '/businesses', icon: Building2 },
     { name: 'Contacts', href: '/contacts', icon: Users },
+    { name: 'Lists', href: '/lists', icon: ListChecks },
     { name: 'Tags', href: '/tags', icon: Tag },
     { name: 'Map View', href: '/map', icon: Map },
     { name: 'Import', href: '/import', icon: Upload },
