@@ -12,15 +12,16 @@ import {
 } from 'lucide-react'
 import { PROVINCE_NAMES } from '@/lib/utils/phone'
 import * as devStore from '@/lib/dev-store'
-
-// Check dev mode inline - imported config may not work in server components
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const isDevMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseUrl.startsWith('https://')
+import { configInvalid, configurationErrorMessage, isDevMode } from '@/lib/config'
 
 async function getDashboardStats() {
   // Dev mode: use local store
   if (isDevMode) {
     return devStore.getStats()
+  }
+
+  if (configInvalid) {
+    throw new Error(configurationErrorMessage)
   }
 
   // Production mode: use Supabase
@@ -72,6 +73,10 @@ async function getDashboardStats() {
 
 export default async function Dashboard() {
   // In dev mode, skip auth check
+  if (configInvalid) {
+    redirect('/setup')
+  }
+
   if (!isDevMode) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

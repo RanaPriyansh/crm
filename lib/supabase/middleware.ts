@@ -1,13 +1,28 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { configInvalid, configurationErrorMessage, isDevMode, missingSupabaseEnv } from '../config'
 
 export async function updateSession(request: NextRequest) {
-    // Check if Supabase is configured - must check here, not in imported module
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-    const isDevMode = !supabaseUrl ||
-        supabaseUrl === '' ||
-        supabaseUrl.includes('your-project') ||
-        !supabaseUrl.startsWith('https://')
+    const pathname = request.nextUrl.pathname
+
+    if (configInvalid) {
+        if (pathname.startsWith('/api')) {
+            return NextResponse.json({
+                error: configurationErrorMessage,
+                missingEnv: missingSupabaseEnv,
+                path: pathname,
+            }, { status: 500 })
+        }
+
+        if (!pathname.startsWith('/setup')) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/setup'
+            url.searchParams.set('from', pathname)
+            return NextResponse.redirect(url)
+        }
+
+        return NextResponse.next({ request })
+    }
 
     // Dev mode: skip all auth checks
     if (isDevMode) {

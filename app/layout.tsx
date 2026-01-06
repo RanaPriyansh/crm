@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { createClient } from "@/lib/supabase/server";
+import { configInvalid, isDevMode } from "@/lib/config";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,10 +16,6 @@ export const metadata: Metadata = {
   description: "Manage and discover businesses across Atlantic Canada",
 };
 
-// Check dev mode inline
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const isDevMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseUrl.startsWith('https://')
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +26,7 @@ export default async function RootLayout({
   if (isDevMode) {
     // In dev mode, always show sidebar (we're "logged in")
     showSidebar = true
-  } else {
+  } else if (!configInvalid) {
     // Production: check actual auth
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
