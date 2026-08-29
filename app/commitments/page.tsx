@@ -445,8 +445,13 @@ export default function CommitmentsPage() {
                                                 human_ok
                                             </label>
                                             <button
-                                                className="btn btn-primary text-sm py-1"
+                                                className="btn btn-primary text-sm py-1 disabled:opacity-40 disabled:cursor-not-allowed"
                                                 disabled={humanOk[c.id] !== true}
+                                                title={
+                                                    humanOk[c.id] !== true
+                                                        ? 'Requires human_ok to leave draft'
+                                                        : undefined
+                                                }
                                                 onClick={() => handleTransition(c, 'internal_ok')}
                                             >
                                                 <ShieldCheck className="w-4 h-4" />
