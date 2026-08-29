@@ -10,6 +10,56 @@ A modern, full-featured Customer Relationship Management system built specifical
 
 ---
 
+## 🧊 Perishable-Trade Commitment Hub
+
+This repository also hosts a **commitment hub for perishable trade**, built on top of the
+existing business directory. It is deliberately narrow: it tracks human-gated trade
+**commitments** against counterparties you already have as businesses.
+
+To be clear about what it is **not**:
+
+- It is **not** a CRM restyle, a HubSpot/Salesforce clone, or a generic deals Kanban.
+- It does **not** send anything. There is no live email, X, or LinkedIn integration.
+  `send_hold` means "ready to send, blocked on purpose" — the block is the feature.
+
+### What a commitment is
+
+A commitment binds a **synthetic counterparty** (a link to an existing `business`) to a
+generic **commodity class** (never a real brand SKU), a **volume + unit**, an **Incoterm**,
+a **ship window** (from/to dates), a **currency**, and a **status**.
+
+### Status machine (fail closed)
+
+```
+draft ──▶ internal_ok ──▶ send_hold ──▶ confirmed
+                                    └──▶ killed
+```
+
+Only these transitions are legal; anything else is rejected.
+
+- **Human-in-the-loop (HITL):** leaving `draft` requires an explicit `human_ok` flag.
+  Without it the transition is refused (`403 hitl_required`).
+- **Fail closed:** a commitment cannot be created without a real `business_id`, without a
+  valid ship window, or with an illegal transition (`400` / `409`).
+- **Append-only audit:** every status change writes an immutable row (who / when /
+  from → to). Audit rows are never edited or deleted (enforced in the DB by a trigger).
+
+### Where it lives
+
+- Domain logic (pure, tested): `lib/commitments/` — `state-machine.ts`, `validation.ts`,
+  `types.ts`, `store.ts`, `seed.ts`.
+- API: `app/api/commitments/` (`route.ts`, `[id]/route.ts`, `[id]/transition/route.ts`,
+  `seed/route.ts`).
+- UI: `app/commitments/page.tsx` (linked from the sidebar).
+- Schema: `supabase/migrations/002_commitments.sql`.
+- Tests: `npm test` (state machine, HITL gate, append-only audit, fail-closed validation).
+
+Seed data is **synthetic only** — placeholder counterparties and demo commitments, no real
+companies or SKUs. In dev mode (no Supabase configured) everything persists to local JSON
+under `.dev-data/`.
+
+---
+
 ## ✨ Features
 
 ### 📊 Dashboard

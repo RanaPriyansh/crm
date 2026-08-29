@@ -15,13 +15,15 @@ import {
     MessageSquare,
     Tag,
     ListChecks,
-    Database
+    Database,
+    Handshake
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Businesses', href: '/businesses', icon: Building2 },
+    { name: 'Commitments', href: '/commitments', icon: Handshake },
     { name: 'Contacts', href: '/contacts', icon: Users },
     { name: 'Lists', href: '/lists', icon: ListChecks },
     { name: 'Tags', href: '/tags', icon: Tag },
