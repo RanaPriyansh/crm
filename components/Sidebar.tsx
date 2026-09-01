@@ -6,21 +6,21 @@ import {
     LayoutDashboard,
     Building2,
     Upload,
-    Settings,
     LogOut,
     MapPin,
     Users,
     Map,
     Download,
-    MessageSquare,
     Tag,
     ListChecks,
-    Database
+    Database,
+    Ship
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Commitments', href: '/commitments', icon: Ship },
     { name: 'Businesses', href: '/businesses', icon: Building2 },
     { name: 'Contacts', href: '/contacts', icon: Users },
     { name: 'Lists', href: '/lists', icon: ListChecks },
